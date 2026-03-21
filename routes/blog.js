@@ -4,20 +4,25 @@ const router = Router()
 
 const Blog = require("../models/blog")
 const Comment = require("../models/comments")
-const cloudinary = require("../config/cloudinary")
 
 
 // Image Storing using Multer
 
 const multer = require("multer")
+const path = require("path")
 
 const storage = multer.diskStorage({
+    destination: function (req,file,cb) {
+        cb(null, path.resolve(`./public/uploads/`))
+    },
+
     filename: function (req, file, cb) {
-        cb(null, file.originalname)
+        const fileName = `${Date.now()}-${file.originalname}`
+        cb(null, fileName)
     }
 })
 
-const upload = multer({ storage })
+const upload = multer({ storage: storage })
 
 // ----------------------------------
 
@@ -59,45 +64,13 @@ router.post('/', upload.single('CoverImage'), async (req, res) => {
         })
     }
 
-    // const blogs = await Blog.create({
-    //     title,
-    //     body,
-    //     createdBy: req.user._id,
-    //     coverImageURL: req.file.path 
-    //     // coverImageURL: `/uploads/${req.file.filename}`
-    // })
-    // return res.redirect(`/blog/${blogs._id}`)
-
-    try {
-        // Upload buffer to Cloudinary
-        const uploadToCloudinary = () => {
-            return new Promise((resolve, reject) => {
-                const stream = cloudinary.uploader.upload_stream(
-                    { folder: "blog_images" },
-                    (error, result) => {
-                        if (error) reject(error)
-                        else resolve(result)
-                    }
-                )
-                stream.end(req.file.buffer)
-            })
-        }
-
-        const result = await uploadToCloudinary()
-
-        const blogs = await Blog.create({
-            title,
-            body,
-            createdBy: req.user._id,
-            coverImageURL: result.secure_url
-        })
-
-        return res.redirect(`/blog/${blogs._id}`)
-
-    } catch (err) {
-        console.log(err)
-        return res.status(500).json({ error: "Upload failed" })
-    }
+    const blogs = await Blog.create({
+        title,
+        body,
+        createdBy: req.user._id,
+        coverImageURL: `/uploads/${req.file.filename}`
+    })
+    return res.redirect(`/blog/${blogs._id}`)
 
 })
 
